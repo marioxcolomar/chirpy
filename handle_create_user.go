@@ -40,5 +40,6 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 			Email:     user.Email,
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,
-		}})
+		},
+	})
 }
