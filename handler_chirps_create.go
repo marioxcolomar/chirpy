@@ -11,6 +11,7 @@ import (
 
 func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request) {
 	type PostChirp struct {
+		ID     uuid.UUID `json:"id"`
 		Body   string    `json:"body"`
 		UserId uuid.UUID `json:"user_id"`
 	}
@@ -36,6 +37,7 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 	}
 
 	respondWithJSON(w, http.StatusCreated, PostChirp{
+		ID:     chirp.ID,
 		Body:   chirp.Body,
 		UserId: chirp.UserID,
 	})
