@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerUserCreate(w http.ResponseWriter, r *http.Request) {
 	type CreateRequest struct {
 		Email string `json:"email"`
 	}

@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/marioxcolomar/chirpy/internal/database"
 )
 
-func (cfg *apiConfig) handlePostChirps(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request) {
 	type PostChirp struct {
 		Body   string    `json:"body"`
 		UserId uuid.UUID `json:"user_id"`
@@ -57,32 +56,4 @@ func replaceWords(s string) string {
 	}
 	res := strings.Join(clean, " ")
 	return res
-}
-
-func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, r *http.Request) {
-	type Chirp struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Body      string    `json:"body"`
-		UserId    uuid.UUID `json:"user_id"`
-	}
-	res, err := cfg.dbQueries.GetChirps(r.Context())
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "unable to create chirp", err)
-		return
-	}
-
-	out := make([]Chirp, len(res))
-	for i, chirp := range res {
-		out[i] = Chirp{
-			ID:        chirp.ID,
-			CreatedAt: chirp.CreatedAt,
-			UpdatedAt: chirp.UpdatedAt,
-			Body:      chirp.Body,
-			UserId:    chirp.UserID,
-		}
-	}
-
-	respondWithJSON(w, http.StatusOK, out)
 }

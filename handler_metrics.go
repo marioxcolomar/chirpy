@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func (cfg *apiConfig) handleMetrics(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
 	page := fmt.Sprintf(`
@@ -20,7 +20,7 @@ func (cfg *apiConfig) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(page))
 }
 
-func (cfg *apiConfig) handleMetricsReset(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerMetricsReset(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	if cfg.platform != "dev" {
 		w.WriteHeader(401)

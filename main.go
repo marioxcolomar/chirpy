@@ -38,13 +38,16 @@ func main() {
 
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(handler))
 
-	mux.HandleFunc("GET /api/healthz", handleHealthCheck)
-	mux.HandleFunc("POST /api/users", apiCfg.handleCreateUser)
-	mux.HandleFunc("POST /api/chirps", apiCfg.handlePostChirps)
-	mux.HandleFunc("GET /api/chirps", apiCfg.handleGetChirps)
+	mux.HandleFunc("GET /api/healthz", handlerHealthCheck)
 
-	mux.HandleFunc("GET /admin/metrics", apiCfg.handleMetrics)
-	mux.HandleFunc("POST /admin/reset", apiCfg.handleMetricsReset)
+	mux.HandleFunc("POST /api/users", apiCfg.handlerUserCreate)
+
+	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpsCreate)
+	mux.HandleFunc("GET /api/chirps", apiCfg.handlerChirpsGet)
+
+	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
+
+	mux.HandleFunc("POST /admin/reset", apiCfg.handlerMetricsReset)
 
 	const port = "8080"
 
