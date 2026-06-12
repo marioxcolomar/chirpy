@@ -1,22 +1,48 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+
+	"github.com/marioxcolomar/chirpy/internal/database"
+
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 func main() {
+	godotenv.Load()
+	// DB
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		fmt.Println("Unable to open connection to database: \n", err)
+	}
+	dbQueries := database.New(db)
+
 	mux := http.NewServeMux()
 
 	fs := http.FileServer(http.Dir("."))
 	handler := http.StripPrefix("/app", fs)
-	apiCfg := apiConfig{}
+
+	platform := os.Getenv("PLATFORM")
+
+	apiCfg := apiConfig{
+		dbQueries: dbQueries,
+		platform:  platform,
+	}
 
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(handler))
+
 	mux.HandleFunc("GET /api/healthz", handleHealthCheck)
+	mux.HandleFunc("POST /api/users", apiCfg.handleCreateUser)
+	mux.HandleFunc("POST /api/chirps", apiCfg.handlePostChirps)
+	mux.HandleFunc("GET /api/chirps", apiCfg.handleGetChirps)
+
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handleMetrics)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handleMetricsReset)
 
@@ -31,14 +57,10 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(200)
-	io.WriteString(w, "OK")
-}
-
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	dbQueries      *database.Queries
+	platform       string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -47,25 +69,4 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 		fmt.Printf("incoming request for route: %s\n", r.URL)
 		next.ServeHTTP(w, r)
 	})
-}
-
-func (cfg *apiConfig) handleMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(200)
-	page := fmt.Sprintf(`
-<html>
-<body>
-<h1>Welcome, Chirpy Admin</h1>
-<p>Chirpy has been visited %d times!</p>
-</body>
-</html>
-`,
-		cfg.fileserverHits.Load())
-	w.Write([]byte(page))
-}
-
-func (cfg *apiConfig) handleMetricsReset(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(200)
-	cfg.fileserverHits.Store(0)
 }
