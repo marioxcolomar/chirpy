@@ -2,15 +2,19 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/marioxcolomar/chirpy/internal/auth"
+	"github.com/marioxcolomar/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handlerUserCreate(w http.ResponseWriter, r *http.Request) {
 	type CreateRequest struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	type User struct {
 		ID        uuid.UUID `json:"id"`
@@ -29,7 +33,13 @@ func (cfg *apiConfig) handlerUserCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	user, err := cfg.dbQueries.CreateUser(r.Context(), params.Email)
+	// Hash password
+	password, err := auth.HashPassword(params.Password)
+	if err != nil {
+		fmt.Println("Unable to hash password: \n", err)
+		return
+	}
+	user, err := cfg.dbQueries.CreateUser(r.Context(), database.CreateUserParams{Email: params.Email, HashedPassword: password})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "unable to create user", err)
 		return
