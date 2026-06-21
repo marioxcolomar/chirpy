@@ -1,6 +1,9 @@
 package auth
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -104,4 +107,32 @@ func TestMakeJWT(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestGetBearerToken(t *testing.T) {
+	tests := []struct {
+		name        string
+		tokenString string
+		token       string
+		wantErr     bool
+	}{
+		{name: "correct token", tokenString: "Bearer this-is-me-token", token: "this-is-me-token", wantErr: false},
+		{name: "missing header", tokenString: "", token: "", wantErr: true},
+		{name: "incorrect token", tokenString: "Not a token", token: "a token", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set("Authorization", tt.tokenString)
+			got, err := GetBearerToken(req.Header)
+			fmt.Println("got token: ", got)
+			if (err != nil || got == "") != tt.wantErr {
+				t.Errorf("get bearer token error: %v, wantErr: %v", err, tt.wantErr)
+			}
+			if got != tt.token {
+				t.Errorf("get bearer token does not match got: %v want: %v", got, tt.token)
+			}
+		})
+	}
 }

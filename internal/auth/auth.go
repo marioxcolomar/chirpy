@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/alexedwards/argon2id"
@@ -77,6 +78,13 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 }
 
 func GetBearerToken(headers http.Header) (string, error) {
-	bearer := headers["Authorization"]
-	
+	bearer, ok := headers["Authorization"]
+	if !ok {
+		return "", fmt.Errorf("unable to handle request")
+	}
+	if !strings.Contains(strings.Join(bearer, ""), "Bearer ") {
+		return "", fmt.Errorf("token format issue")
+	}
+	token := strings.Join(strings.Split(bearer[0], "Bearer "), "")
+	return token, nil
 }
