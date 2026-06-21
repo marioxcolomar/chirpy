@@ -6,10 +6,23 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/marioxcolomar/chirpy/internal/auth"
 	"github.com/marioxcolomar/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request) {
+	// Validate request
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "unable to handle request", err)
+		return
+	}
+	userId, errJWT := auth.ValidateJWT(token, cfg.jwtSecret)
+	if errJWT != nil {
+		respondWithError(w, http.StatusUnauthorized, "issue with request", errJWT)
+		return
+	}
+
 	type PostChirp struct {
 		ID     uuid.UUID `json:"id"`
 		Body   string    `json:"body"`
@@ -18,9 +31,9 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 
 	dec := json.NewDecoder(r.Body)
 	params := PostChirp{}
-	err := dec.Decode(&params)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "unable to decode parameters", err)
+	errParams := dec.Decode(&params)
+	if errParams != nil {
+		respondWithError(w, http.StatusInternalServerError, "unable to decode parameters", errParams)
 		return
 	}
 
@@ -29,8 +42,7 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		respondWithError(w, http.StatusBadRequest, "chirp is too long", nil)
 		return
 	}
-	clean := replaceWords(params.Body)
-	chirp, err := cfg.dbQueries.CreateChirp(r.Context(), database.CreateChirpParams{Body: clean, UserID: params.UserId})
+	chirp, err := cfg.dbQueries.CreateChirp(r.Context(), database.CreateChirpParams{Body: replaceWords(params.Body), UserID: userId})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "unable to create chirp", err)
 		return
