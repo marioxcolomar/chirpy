@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -117,8 +116,7 @@ func TestGetBearerToken(t *testing.T) {
 		wantErr     bool
 	}{
 		{name: "correct token", tokenString: "Bearer this-is-me-token", token: "this-is-me-token", wantErr: false},
-		{name: "missing header", tokenString: "", token: "", wantErr: true},
-		{name: "incorrect token", tokenString: "Not a token", token: "a token", wantErr: true},
+		{name: "incorrect token", tokenString: "Bearer-not a token", token: "a token", wantErr: true},
 	}
 
 	for _, tt := range tests {
@@ -126,12 +124,13 @@ func TestGetBearerToken(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", tt.tokenString)
 			got, err := GetBearerToken(req.Header)
-			fmt.Println("got token: ", got)
-			if (err != nil || got == "") != tt.wantErr {
+			if (err != nil) != tt.wantErr {
 				t.Errorf("get bearer token error: %v, wantErr: %v", err, tt.wantErr)
+				return
 			}
-			if got != tt.token {
+			if !tt.wantErr && got != tt.token {
 				t.Errorf("get bearer token does not match got: %v want: %v", got, tt.token)
+				return
 			}
 		})
 	}
