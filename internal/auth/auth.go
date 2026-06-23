@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -78,13 +80,21 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 }
 
 func GetBearerToken(headers http.Header) (string, error) {
-	bearer, ok := headers["Authorization"]
-	if !ok {
-		return "", fmt.Errorf("unable to handle request")
+	authHeader := headers.Get("Authorization")
+	if authHeader == "" {
+		return "", fmt.Errorf("no auth header included in the request")
 	}
-	if !strings.Contains(strings.Join(bearer, ""), "Bearer ") {
-		return "", fmt.Errorf("token format issue")
+	splitAuth := strings.Split(authHeader, " ")
+	if len(splitAuth) < 2 || splitAuth[0] != "Bearer" {
+		return "", errors.New("authorization header is malformed")
 	}
-	token := strings.Join(strings.Split(bearer[0], "Bearer "), "")
-	return token, nil
+	return splitAuth[1], nil
+}
+
+func MakeRefreshToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("make refresh token: %w", err)
+	}
+	return hex.EncodeToString(b), nil
 }

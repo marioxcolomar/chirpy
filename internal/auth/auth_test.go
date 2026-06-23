@@ -2,7 +2,6 @@ package auth
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -110,26 +109,44 @@ func TestMakeJWT(t *testing.T) {
 
 func TestGetBearerToken(t *testing.T) {
 	tests := []struct {
-		name        string
-		tokenString string
-		token       string
-		wantErr     bool
+		name      string
+		headers   http.Header
+		wantToken string
+		wantErr   bool
 	}{
-		{name: "correct token", tokenString: "Bearer this-is-me-token", token: "this-is-me-token", wantErr: false},
-		{name: "incorrect token", tokenString: "Bearer-not a token", token: "a token", wantErr: true},
+		{
+			name: "correct token",
+			headers: http.Header{
+				"Authorization": []string{"Bearer this-is-me-token"},
+			},
+			wantToken: "this-is-me-token",
+			wantErr:   false,
+		},
+		{
+			name: "malformed token",
+			headers: http.Header{
+				"Authorization": []string{"NotBearer token"},
+			},
+			wantToken: "",
+			wantErr:   true,
+		},
+		{
+			name:      "missing authorization header",
+			headers:   http.Header{},
+			wantToken: "",
+			wantErr:   true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			req.Header.Set("Authorization", tt.tokenString)
-			got, err := GetBearerToken(req.Header)
+			got, err := GetBearerToken(tt.headers)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("get bearer token error: %v, wantErr: %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr && got != tt.token {
-				t.Errorf("get bearer token does not match got: %v want: %v", got, tt.token)
+			if got != tt.wantToken {
+				t.Errorf("get bearer token does not match got: %v want: %v", got, tt.wantToken)
 				return
 			}
 		})
