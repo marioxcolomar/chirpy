@@ -7,13 +7,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/marioxcolomar/chirpy/internal/auth"
+	"github.com/marioxcolomar/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type LoginRequest struct {
-		Password         string `json:"password"`
-		Email            string `json:"email"`
-		ExpiresInSeconds *int   `json:"expires_in_seconds"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
 	}
 
 	dec := json.NewDecoder(r.Body)
@@ -35,28 +35,46 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expires := time.Hour
-	if params.ExpiresInSeconds != nil {
-		expires = time.Duration(*params.ExpiresInSeconds)
+	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Hour)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unable to complete request", err)
+		return
 	}
-	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, expires)
+	refreshToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unable to complete request", err)
+		return
+	}
+	refresh, err := cfg.dbQueries.CreateRefreshToken(r.Context(),
+		database.CreateRefreshTokenParams{
+			Token:     refreshToken,
+			UserID:    user.ID,
+			ExpiresAt: time.Now().UTC().AddDate(0, 0, 60),
+		})
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Unable to complete request", err)
 		return
 	}
 
-	type UserResponse struct {
+	type User struct {
 		ID        uuid.UUID `json:"id"`
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
 		Email     string    `json:"email"`
-		Token     string    `json:"token"`
 	}
-	respondWithJSON(w, http.StatusOK, UserResponse{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-		Token:     token,
+	type Response struct {
+		User
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
+	}
+	respondWithJSON(w, http.StatusOK, Response{
+		User: User{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
+		},
+		Token:        token,
+		RefreshToken: refresh.Token,
 	})
 }
