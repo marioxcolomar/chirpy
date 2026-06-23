@@ -43,6 +43,7 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", handlerHealthCheck)
 
 	mux.HandleFunc("POST /api/users", apiCfg.handlerUserCreate)
+	mux.HandleFunc("PUT /api/users", apiCfg.handlerUserUpdate)
 
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerTokenRefresh)
