@@ -14,12 +14,12 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 	// Validate request
 	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "unable to handle request", err)
+		respondWithError(w, http.StatusUnauthorized, "request is missing JWT", err)
 		return
 	}
 	userId, errJWT := auth.ValidateJWT(token, cfg.jwtSecret)
 	if errJWT != nil {
-		respondWithError(w, http.StatusUnauthorized, "issue with request", errJWT)
+		respondWithError(w, http.StatusUnauthorized, "couldn't validate JWT", errJWT)
 		return
 	}
 
