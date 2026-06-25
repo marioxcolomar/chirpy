@@ -40,6 +40,8 @@ func main() {
 
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(handler))
 
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerWebhooks)
+
 	mux.HandleFunc("GET /api/healthz", handlerHealthCheck)
 
 	mux.HandleFunc("POST /api/users", apiCfg.handlerUserCreate)
