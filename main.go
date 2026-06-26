@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync/atomic"
 
+	"github.com/marioxcolomar/chirpy/api"
 	"github.com/marioxcolomar/chirpy/internal/database"
 
 	"github.com/joho/godotenv"
@@ -41,23 +42,27 @@ func main() {
 		apiKey:    apiKey,
 	}
 
+	// Handler
+	userHandler := api.NewUserHandler(apiCfg.dbQueries, apiCfg.jwtSecret)
+	chirpHandler := api.NewChirpHandler(apiCfg.dbQueries, apiCfg.jwtSecret)
+
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(handler))
 
 	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerWebhooks)
 
 	mux.HandleFunc("GET /api/healthz", handlerHealthCheck)
 
-	mux.HandleFunc("POST /api/users", apiCfg.handlerUserCreate)
-	mux.HandleFunc("PUT /api/users", apiCfg.handlerUserUpdate)
+	mux.HandleFunc("POST /api/users", userHandler.HandleCreate)
+	mux.HandleFunc("PUT /api/users", userHandler.HandleUpdate)
 
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerTokenRefresh)
 	mux.HandleFunc("POST /api/revoke", apiCfg.handlerTokenRevoke)
 
-	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpsCreate)
-	mux.HandleFunc("GET /api/chirps", apiCfg.handlerChirpsGet)
-	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerChirpsGetOne)
-	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.handlerChirpsDelete)
+	mux.HandleFunc("POST /api/chirps", chirpHandler.HandleCreate)
+	mux.HandleFunc("GET /api/chirps", chirpHandler.HandleGet)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", chirpHandler.HandleGetOne)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", chirpHandler.HandleDelete)
 
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 
