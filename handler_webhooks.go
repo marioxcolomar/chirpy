@@ -5,9 +5,20 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/marioxcolomar/chirpy/internal/auth"
 )
 
 func (cfg *apiConfig) handlerWebhooks(w http.ResponseWriter, r *http.Request) {
+	// Validate request
+	token, errToken := auth.GetAPIKey(r.Header)
+	if errToken != nil {
+		respondWithError(w, http.StatusUnauthorized, "request is missing JWT", errToken)
+		return
+	}
+	if token != cfg.apiKey {
+		respondWithError(w, http.StatusUnauthorized, "request is using the wrong token", nil)
+		return
+	}
 	type Request struct {
 		Event string `json:"event"`
 		Data  struct {

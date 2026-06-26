@@ -32,10 +32,13 @@ func main() {
 	platform := os.Getenv("PLATFORM")
 	jwtSecret := os.Getenv("JWT_SECRET")
 
+	apiKey := os.Getenv("POLKA_KEY")
+
 	apiCfg := apiConfig{
 		dbQueries: dbQueries,
 		platform:  platform,
 		jwtSecret: jwtSecret,
+		apiKey:    apiKey,
 	}
 
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(handler))
@@ -76,6 +79,7 @@ type apiConfig struct {
 	dbQueries      *database.Queries
 	platform       string
 	jwtSecret      string
+	apiKey         string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
