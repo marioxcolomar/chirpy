@@ -1,7 +1,8 @@
-package main
+package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -10,7 +11,16 @@ import (
 	"github.com/marioxcolomar/chirpy/internal/database"
 )
 
-func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
+type AuthHandler struct {
+	db  *database.Queries
+	jwt string
+}
+
+func NewAuthHandler(db *database.Queries, jwtSecret string) *AuthHandler {
+	return &AuthHandler{db: db, jwt: jwtSecret}
+}
+
+func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	type LoginRequest struct {
 		Password string `json:"password"`
 		Email    string `json:"email"`
@@ -24,7 +34,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := cfg.dbQueries.GetUser(r.Context(), params.Email)
+	user, err := h.db.GetUser(r.Context(), params.Email)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
 		return
@@ -35,7 +45,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Hour)
+	token, err := auth.MakeJWT(user.ID, h.jwt, time.Hour)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Unable to complete request", err)
 		return
@@ -45,7 +55,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusUnauthorized, "Unable to complete request", err)
 		return
 	}
-	refresh, err := cfg.dbQueries.CreateRefreshToken(r.Context(),
+	refresh, err := h.db.CreateRefreshToken(r.Context(),
 		database.CreateRefreshTokenParams{
 			Token:     refreshToken,
 			UserID:    user.ID,
@@ -79,4 +89,49 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		Token:        token,
 		RefreshToken: refresh.Token,
 	})
+}
+
+func (h *AuthHandler) HandleTokenRefresh(w http.ResponseWriter, r *http.Request) {
+	// Validate request
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "request missing JWT", err)
+		return
+	}
+	refreshToken, err := h.db.GetRefreshToken(r.Context(), token)
+	fmt.Println("err is not nil: \n", err != nil)
+	fmt.Println("revoked at valid: \n", !refreshToken.RevokedAt.Valid)
+	fmt.Println("token expires at: \n", refreshToken.ExpiresAt)
+	if err != nil || refreshToken.RevokedAt.Valid || refreshToken.ExpiresAt.Before(time.Now().UTC()) {
+		respondWithError(w, http.StatusUnauthorized, "unable to complete request", err)
+		return
+	}
+
+	newToken, err := auth.MakeJWT(refreshToken.UserID, h.jwt, time.Hour)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unable to complete request", err)
+		return
+	}
+
+	type RefreshTokenResponse struct {
+		Token string `json:"token"`
+	}
+	respondWithJSON(w, http.StatusOK, RefreshTokenResponse{
+		Token: newToken,
+	})
+}
+
+func (h *AuthHandler) HandleTokenRevoke(w http.ResponseWriter, r *http.Request) {
+	// Validate request
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "request missing JWT", err)
+		return
+	}
+	errRevoke := h.db.RevokeRefreshToken(r.Context(), token)
+	if errRevoke != nil {
+		respondWithError(w, http.StatusUnauthorized, "unable to handle request", err)
+		return
+	}
+	respondWithJSON(w, http.StatusNoContent, nil)
 }
