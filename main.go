@@ -47,7 +47,7 @@ func main() {
 	userHandler := api.NewUserHandler(apiCfg.dbQueries, apiCfg.jwtSecret)
 	authHandler := api.NewAuthHandler(apiCfg.dbQueries, apiCfg.jwtSecret)
 	chirpHandler := api.NewChirpHandler(apiCfg.dbQueries, apiCfg.jwtSecret)
-	adminHandler := api.NewAdminHandler(apiCfg.dbQueries, apiCfg.jwtSecret)
+	adminHandler := api.NewAdminHandler(apiCfg.dbQueries, &apiCfg.fileserverHits, apiCfg.platform)
 
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(handler))
 
