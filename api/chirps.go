@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -84,6 +85,7 @@ func replaceWords(s string) string {
 
 func (h *ChirpHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	authorIdString := r.URL.Query().Get("author_id")
+	sortQueryString := r.URL.Query().Get("sort")
 	type Chirp struct {
 		ID        uuid.UUID `json:"id"`
 		CreatedAt time.Time `json:"created_at"`
@@ -91,22 +93,39 @@ func (h *ChirpHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 		Body      string    `json:"body"`
 		UserId    uuid.UUID `json:"user_id"`
 	}
-	var chirps []database.Chirp
+
+	var res []database.Chirp
 	var err error
 	if authorIdString == "" {
-		chirps, err = h.db.GetChirps(r.Context())
+		res, err = h.db.GetChirps(r.Context())
 	} else {
 		authorId, parseErr := uuid.Parse(authorIdString)
 		if parseErr != nil {
 			respondWithError(w, http.StatusBadRequest, "unable to handle author id", parseErr)
 			return
 		}
-		chirps, err = h.db.GetChirpsByAuthorId(r.Context(), authorId)
-
+		res, err = h.db.GetChirpsByAuthorId(r.Context(), authorId)
 	}
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "unable to create chirp", err)
 		return
+	}
+
+	chirps := make([]Chirp, len(res))
+	for i, chirp := range res {
+		chirps[i] = Chirp{
+			ID:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserId:    chirp.UserID,
+		}
+	}
+
+	if sortQueryString == "desc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+		})
 	}
 
 	respondWithJSON(w, http.StatusOK, chirps)
