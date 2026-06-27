@@ -35,6 +35,14 @@ func main() {
 
 	apiKey := os.Getenv("POLKA_KEY")
 
+	type apiConfig struct {
+		fileserverHits atomic.Int32
+		dbQueries      *database.Queries
+		platform       string
+		jwtSecret      string
+		apiKey         string
+	}
+
 	apiCfg := apiConfig{
 		dbQueries: dbQueries,
 		platform:  platform,
@@ -49,11 +57,11 @@ func main() {
 	chirpHandler := api.NewChirpHandler(apiCfg.dbQueries, apiCfg.jwtSecret)
 	adminHandler := api.NewAdminHandler(apiCfg.dbQueries, &apiCfg.fileserverHits, apiCfg.platform)
 
-	mux.Handle("/app/", apiCfg.middlewareMetricsInc(handler))
+	mux.Handle("/app/", adminHandler.MiddlewareMetricsInc(handler))
 
 	mux.HandleFunc("POST /api/polka/webhooks", polkaHandler.HandleWebhooks)
 
-	mux.HandleFunc("GET /api/healthz", handlerHealthCheck)
+	mux.HandleFunc("GET /api/healthz", api.HealthCheck)
 
 	mux.HandleFunc("POST /api/users", userHandler.HandleCreate)
 	mux.HandleFunc("PUT /api/users", userHandler.HandleUpdate)
@@ -79,20 +87,4 @@ func main() {
 
 	fmt.Printf("server started on: %s\n", port)
 	log.Fatal(srv.ListenAndServe())
-}
-
-type apiConfig struct {
-	fileserverHits atomic.Int32
-	dbQueries      *database.Queries
-	platform       string
-	jwtSecret      string
-	apiKey         string
-}
-
-func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cfg.fileserverHits.Add(1)
-		fmt.Printf("incoming request for route: %s\n", r.URL)
-		next.ServeHTTP(w, r)
-	})
 }

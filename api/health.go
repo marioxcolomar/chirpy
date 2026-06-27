@@ -1,11 +1,11 @@
-package main
+package api
 
 import (
 	"io"
 	"net/http"
 )
 
-func handlerHealthCheck(w http.ResponseWriter, r *http.Request) {
+func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(200)
 	io.WriteString(w, "OK")

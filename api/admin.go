@@ -18,6 +18,13 @@ func NewAdminHandler(db *database.Queries, fileserverHits *atomic.Int32, platfor
 	return &AdminHandler{db: db, fileserverHits: fileserverHits, platform: platform}
 }
 
+func (h *AdminHandler) MiddlewareMetricsInc(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.fileserverHits.Add(1)
+		fmt.Printf("incoming request for route: %s\n", r.URL)
+		next.ServeHTTP(w, r)
+	})
+}
 func (h *AdminHandler) HandleMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
